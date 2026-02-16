@@ -1,0 +1,23 @@
+meta {
+  name: Update Book
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{books_url}}/books/{{book_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Cien anos de soledad (Edicion revisada)",
+    "isbn": "978-0060883287",
+    "publication_year": 1967
+  }
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Create Author
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{authors_url}}/authors
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Gabriel Garcia Marquez",
+    "birth_date": "1927-03-06",
+    "nationality": "Colombian"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("author_id", res.body.id);
+  }
+}

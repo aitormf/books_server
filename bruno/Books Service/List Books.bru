@@ -1,0 +1,11 @@
+meta {
+  name: List Books
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{books_url}}/books?skip=0&limit=100
+  body: none
+  auth: none
+}

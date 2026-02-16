@@ -1,0 +1,21 @@
+meta {
+  name: Assign Authors to Book
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{books_url}}/books/{{book_id}}/authors
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "author_ids": [1]
+  }
+}

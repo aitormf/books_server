@@ -1,0 +1,11 @@
+meta {
+  name: Delete Author
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{authors_url}}/authors/{{author_id}}
+  body: none
+  auth: none
+}

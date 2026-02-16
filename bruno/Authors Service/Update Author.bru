@@ -1,0 +1,23 @@
+meta {
+  name: Update Author
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{authors_url}}/authors/{{author_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Gabriel Jose Garcia Marquez",
+    "birth_date": "1927-03-06",
+    "nationality": "Colombian"
+  }
+}

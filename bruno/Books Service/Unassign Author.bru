@@ -1,0 +1,11 @@
+meta {
+  name: Unassign Author from Book
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{books_url}}/books/{{book_id}}/authors/{{author_id}}
+  body: none
+  auth: none
+}
