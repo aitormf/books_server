@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from app.domain.entities import Book
-from app.repositories.interfaces import IAuthorsCache, IBookRepository
+from app.repositories.interfaces import IAuthorsCache, IBookRepository, IEventPublisher
 
 
 class BookService:
@@ -15,7 +15,7 @@ class BookService:
         self,
         book_repo: IBookRepository,
         authors_cache: IAuthorsCache,
-        event_publisher: object | None = None,
+        event_publisher: IEventPublisher | None = None,
     ) -> None:
         self.book_repo = book_repo
         self.authors_cache = authors_cache
@@ -142,3 +142,26 @@ class BookService:
                 correlation_id,
             )
         return result
+
+    # ── Sync methods for Kafka event handlers (no events published) ──
+
+    async def sync_author_to_cache(
+        self, author_id: int, name: str, nationality: str | None
+    ) -> None:
+        """Upsert an author into the local cache (called from event handlers)."""
+        await self.authors_cache.save_author(
+            author_id=author_id, name=name, nationality=nationality
+        )
+
+    async def remove_author_from_cache_and_books(self, author_id: int) -> None:
+        """Remove an author from all books and from the cache."""
+        await self.book_repo.remove_author_from_all_books(author_id)
+        await self.authors_cache.delete_author(author_id)
+
+    async def sync_author_linked(self, book_id: int, author_id: int) -> None:
+        """Sync an author-book link created by the authors service."""
+        await self.book_repo.add_authors(book_id, [author_id])
+
+    async def sync_author_unlinked(self, book_id: int, author_id: int) -> None:
+        """Sync an author-book unlink from the authors service."""
+        await self.book_repo.remove_author(book_id, author_id)

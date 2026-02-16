@@ -19,6 +19,18 @@ def service():
     )
 
 
+@pytest.fixture
+def sync_service():
+    """Service without event publisher, as used by Kafka handlers."""
+    mock_repo = AsyncMock()
+    mock_cache = AsyncMock()
+    return AuthorService(
+        author_repo=mock_repo,
+        books_cache=mock_cache,
+        event_publisher=None,
+    )
+
+
 @pytest.mark.asyncio
 async def test_create_author_validates_short_name(service):
     author = Author(id=None, name="A", birth_date=date(1990, 1, 1), nationality="ES")
@@ -165,3 +177,37 @@ async def test_update_nonexistent_author(service):
 
     assert result is None
     service.event_publisher.publish.assert_not_called()
+
+
+# ── Sync method tests (Kafka handler delegation) ──
+
+
+@pytest.mark.asyncio
+async def test_sync_book_to_cache(sync_service):
+    await sync_service.sync_book_to_cache(book_id=1, title="Test", isbn="123", year=2020)
+
+    sync_service.books_cache.save_book.assert_called_once_with(
+        book_id=1, title="Test", isbn="123", year=2020
+    )
+
+
+@pytest.mark.asyncio
+async def test_remove_book_from_cache_and_authors(sync_service):
+    await sync_service.remove_book_from_cache_and_authors(book_id=42)
+
+    sync_service.author_repo.remove_book_from_all_authors.assert_called_once_with(42)
+    sync_service.books_cache.delete_book.assert_called_once_with(42)
+
+
+@pytest.mark.asyncio
+async def test_sync_book_linked(sync_service):
+    await sync_service.sync_book_linked(author_id=1, book_id=10)
+
+    sync_service.author_repo.add_books.assert_called_once_with(1, [10])
+
+
+@pytest.mark.asyncio
+async def test_sync_book_unlinked(sync_service):
+    await sync_service.sync_book_unlinked(author_id=1, book_id=10)
+
+    sync_service.author_repo.remove_book.assert_called_once_with(1, 10)

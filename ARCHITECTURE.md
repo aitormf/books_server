@@ -51,7 +51,7 @@ Authors Service                    Books Service
 - **Eventual consistency**: Both services maintain their own view of the data
 - **Scalability**: Services can be scaled independently
 
-### 3. Layered Architecture with Repository Pattern
+### 3. Layered Architecture with Repository Pattern & Event Bus Abstraction
 
 Each service follows a strict layered architecture:
 
@@ -65,23 +65,62 @@ Each service follows a strict layered architecture:
 │  services.py, entities.py           │
 │  Pure Python, no framework deps     │
 ├──────────────────────────────────────┤
-│     Repository Layer (Contracts)     │
+│    Contracts Layer (Interfaces)      │
 │  interfaces.py (ABC)                │
-│  Abstract persistence contracts     │
+│  IAuthorRepository, IBooksCache     │
+│  IEventPublisher, IEventConsumer    │
 ├──────────────────────────────────────┤
 │   Infrastructure Layer (Details)     │
-│  database/, kafka/                  │
-│  SQLAlchemy, aiokafka               │
+│  database/  → SQLAlchemy, asyncpg   │
+│  kafka/     → aiokafka              │
 └──────────────────────────────────────┘
 ```
 
 **Key rules:**
-- Routes never import SQLAlchemy models
+- Routes never import SQLAlchemy models or Kafka classes
 - Services only depend on abstract interfaces (ABC)
 - Domain entities are plain Python dataclasses
-- Only the infrastructure layer knows about ORMs and databases
+- Only the infrastructure layer knows about ORMs, databases, and message brokers
 
-### 4. Dependency Injection
+### 4. Event Bus Abstraction
+
+The messaging layer mirrors the Repository Pattern applied to the database. Two abstract interfaces decouple all event-driven communication from the underlying message broker:
+
+```python
+class IEventPublisher(ABC):
+    async def start(self) -> None: ...
+    async def stop(self) -> None: ...
+    async def publish(self, topic: str, data: dict, correlation_id: str | None = None) -> None: ...
+
+class IEventConsumer(ABC):
+    async def start(self) -> None: ...
+    async def stop(self) -> None: ...
+    def register_handler(self, event_type: str, handler: EventHandler) -> None: ...
+```
+
+**Current implementation:** `KafkaProducerService` and `KafkaConsumerService` (using aiokafka).
+
+**To switch to another broker** (e.g., RabbitMQ), create new classes implementing these interfaces — no changes needed in domain services, handlers, or API routes.
+
+**Handler registration** is done at startup in `main.py`:
+
+```python
+kafka_consumer = KafkaConsumerService()
+kafka_consumer.register_handler("book.created", handle_book_created_or_updated)
+kafka_consumer.register_handler("book.updated", handle_book_created_or_updated)
+# ...
+```
+
+Event handlers (`handlers.py`) are pure async functions with signature `async def handler(data: dict) -> None`. They delegate to the domain service layer — the same `AuthorService`/`BookService` used by HTTP routes — but instantiated **without an event publisher** to prevent cascading events. This ensures all data access goes through the domain layer regardless of the entry point:
+
+```
+HTTP    →  routes.py   →  DomainService(publisher=kafka)  →  Repository/Cache
+Kafka   →  handlers.py →  DomainService(publisher=None)   →  Repository/Cache
+```
+
+Each handler receives a `service_factory` (async context manager) that creates a short-lived service with its own database session.
+
+### 5. Dependency Injection
 
 The `dependencies.py` module is the single point where interfaces are connected to implementations:
 
@@ -93,9 +132,11 @@ author_repo = PostgreSQLAuthorRepository(session)
 # author_repo = MongoDBAuthorRepository(mongo_client)
 ```
 
+The same applies to the event bus — `main.py` is where `KafkaProducerService` and `KafkaConsumerService` are instantiated and could be replaced.
+
 ## Event Message Format
 
-All Kafka messages follow a standard envelope:
+All event messages follow a standard envelope (implemented by the publisher):
 
 ```json
 {
@@ -126,7 +167,7 @@ There is a brief window where the Books Service doesn't yet know about the new a
 
 ## Idempotency
 
-All Kafka consumers use PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (upsert) to ensure:
+All event handlers use PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (upsert) to ensure:
 - Duplicate messages don't create duplicate data
 - Out-of-order messages resolve to the latest state
 - Consumers can be safely restarted from any offset
@@ -134,7 +175,7 @@ All Kafka consumers use PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (upsert) t
 ## Error Handling
 
 - **HTTP errors**: Standardized JSON responses with correlation IDs
-- **Kafka consumer failures**: 3 retries with exponential backoff
+- **Event consumer failures**: 3 retries with exponential backoff
 - **Dead letter logging**: Failed messages are logged for investigation
 - **Global exception handler**: Catches unhandled errors at the FastAPI level
 
@@ -143,7 +184,7 @@ All Kafka consumers use PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (upsert) t
 - **Structured logging**: All logs are JSON via structlog
 - **Correlation IDs**: Propagated through HTTP headers and Kafka messages
 - **Request timing**: Every HTTP request logs duration in milliseconds
-- **Event tracking**: Every published/consumed Kafka event is logged
+- **Event tracking**: Every published/consumed event is logged
 
 ## Data Flow: Assigning Books to an Author
 

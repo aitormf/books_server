@@ -9,7 +9,7 @@ A microservices-based system for managing books and authors, built with Python, 
 - **Kafka (KRaft)** — Asynchronous event-driven communication between services
 - **PostgreSQL** — Single instance with two isolated databases (`authors_db`, `books_db`)
 
-Each service follows a **layered architecture** with the **Repository Pattern** to fully decouple business logic from persistence. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
+Each service follows a **layered architecture** with the **Repository Pattern** and **Event Bus Abstraction** to fully decouple business logic from both persistence and messaging infrastructure. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Tech Stack
 
@@ -131,7 +131,25 @@ cd books-service && pytest && cd ..
 cd authors-service && pytest --cov=app --cov-report=term-missing && cd ..
 ```
 
-## Kafka Topics
+## Event Bus Abstraction
+
+The messaging layer is fully abstracted behind `IEventPublisher` and `IEventConsumer` interfaces, following the same pattern as the database Repository layer. This means:
+
+- **Business logic** (`services.py`) only depends on abstract `IEventPublisher` — no Kafka imports
+- **Event consumption** uses `IEventConsumer` with a handler registration pattern
+- **Swapping Kafka** for RabbitMQ, Redis Streams, or any other message broker only requires new implementations of these interfaces — no changes to domain, API, or handler code
+
+```python
+# Current: Kafka
+kafka_producer = KafkaProducerService()   # implements IEventPublisher
+kafka_consumer = KafkaConsumerService()   # implements IEventConsumer
+
+# Future: RabbitMQ (only infrastructure changes)
+# rabbit_producer = RabbitMQProducerService()  # implements IEventPublisher
+# rabbit_consumer = RabbitMQConsumerService()  # implements IEventConsumer
+```
+
+## Event Topics
 
 Events published/consumed for eventual consistency:
 

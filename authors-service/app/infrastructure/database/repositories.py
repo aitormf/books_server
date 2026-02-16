@@ -78,6 +78,12 @@ class PostgreSQLAuthorRepository(IAuthorRepository):
         await self.session.commit()
         return result.rowcount > 0
 
+    async def remove_book_from_all_authors(self, book_id: int) -> None:
+        await self.session.execute(
+            delete(AuthorBookModel).where(AuthorBookModel.book_id == book_id)
+        )
+        await self.session.commit()
+
     async def get_books_by_author(self, author_id: int) -> List[Book]:
         stmt = (
             select(BooksCacheModel)

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import time
 import uuid
@@ -11,8 +10,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.routes import router
 from app.config import settings
-from app.infrastructure.database.connection import create_tables, engine
-from app.infrastructure.kafka.consumer import start_consumer
+from app.domain.services import AuthorService
+from app.infrastructure.database.connection import async_session_factory, create_tables, engine
+from app.infrastructure.database.repositories import (
+    PostgreSQLAuthorRepository,
+    PostgreSQLBooksCache,
+)
+from app.infrastructure.kafka.consumer import KafkaConsumerService
+from app.infrastructure.kafka.handlers import create_book_event_handlers
 from app.infrastructure.kafka.producer import kafka_producer
 
 
@@ -73,6 +78,25 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 
 @asynccontextmanager
+async def _author_service_for_events():
+    """Create an AuthorService with its own session and no event publisher."""
+    async with async_session_factory() as session:
+        yield AuthorService(
+            author_repo=PostgreSQLAuthorRepository(session),
+            books_cache=PostgreSQLBooksCache(session),
+            event_publisher=None,
+        )
+
+
+book_handlers = create_book_event_handlers(
+    service_factory=_author_service_for_events,
+)
+kafka_consumer = KafkaConsumerService()
+for event_type, handler in book_handlers.items():
+    kafka_consumer.register_handler(event_type, handler)
+
+
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(
         "starting_service",
@@ -81,14 +105,10 @@ async def lifespan(app: FastAPI):
     )
     await create_tables()
     await kafka_producer.start()
-    consumer_task = asyncio.create_task(start_consumer())
+    await kafka_consumer.start()
     yield
     logger.info("stopping_service", service=settings.service_name)
-    consumer_task.cancel()
-    try:
-        await consumer_task
-    except asyncio.CancelledError:
-        pass
+    await kafka_consumer.stop()
     await kafka_producer.stop()
     await engine.dispose()
 
