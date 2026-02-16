@@ -6,11 +6,12 @@ import structlog
 from aiokafka import AIOKafkaProducer
 
 from app.config import settings
+from app.repositories.interfaces import IEventPublisher
 
 logger = structlog.get_logger()
 
 
-class KafkaProducerService:
+class KafkaProducerService(IEventPublisher):
     """Kafka event producer with structured message format."""
 
     def __init__(self) -> None:

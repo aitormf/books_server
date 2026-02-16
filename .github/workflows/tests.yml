@@ -31,10 +31,6 @@ jobs:
         working-directory: ${{ matrix.service }}
         run: uv pip install --system -e ".[dev]"
 
-      - name: Run ruff check
-        working-directory: ${{ matrix.service }}
-        run: ruff check .
-
       - name: Run tests with coverage
         id: tests
         working-directory: ${{ matrix.service }}

@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from typing import List, Optional
 
 from app.domain.entities import Author, Book
+
+EventHandler = Callable[[dict], Awaitable[None]]
 
 
 class IAuthorRepository(ABC):
@@ -43,6 +46,10 @@ class IAuthorRepository(ABC):
     async def get_books_by_author(self, author_id: int) -> List[Book]:
         """Get books assigned to an author."""
 
+    @abstractmethod
+    async def remove_book_from_all_authors(self, book_id: int) -> None:
+        """Remove all author-book links for a given book."""
+
 
 class IBooksCache(ABC):
     """Abstract interface for the books cache."""
@@ -60,3 +67,37 @@ class IBooksCache(ABC):
     @abstractmethod
     async def delete_book(self, book_id: int) -> None:
         """Delete a book from the cache."""
+
+
+class IEventPublisher(ABC):
+    """Abstract interface for publishing domain events."""
+
+    @abstractmethod
+    async def start(self) -> None:
+        """Start the publisher connection."""
+
+    @abstractmethod
+    async def stop(self) -> None:
+        """Stop the publisher connection."""
+
+    @abstractmethod
+    async def publish(
+        self, topic: str, data: dict, correlation_id: str | None = None
+    ) -> None:
+        """Publish an event to the given topic."""
+
+
+class IEventConsumer(ABC):
+    """Abstract interface for consuming domain events."""
+
+    @abstractmethod
+    async def start(self) -> None:
+        """Start the consumer loop."""
+
+    @abstractmethod
+    async def stop(self) -> None:
+        """Stop the consumer."""
+
+    @abstractmethod
+    def register_handler(self, event_type: str, handler: EventHandler) -> None:
+        """Register a handler for a specific event type."""

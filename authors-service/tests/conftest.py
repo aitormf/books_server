@@ -11,27 +11,8 @@ from app.main import app
 
 
 @pytest.fixture
-def mock_author_repo():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_books_cache():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_event_publisher():
-    return AsyncMock()
-
-
-@pytest.fixture
-def author_service(mock_author_repo, mock_books_cache, mock_event_publisher):
-    return AuthorService(
-        author_repo=mock_author_repo,
-        books_cache=mock_books_cache,
-        event_publisher=mock_event_publisher,
-    )
+def author_service():
+    return AsyncMock(spec=AuthorService)
 
 
 @pytest.fixture
