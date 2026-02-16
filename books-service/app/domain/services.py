@@ -16,10 +16,16 @@ class BookService:
         book_repo: IBookRepository,
         authors_cache: IAuthorsCache,
         event_publisher: IEventPublisher | None = None,
+        commit=None,
     ) -> None:
         self.book_repo = book_repo
         self.authors_cache = authors_cache
         self.event_publisher = event_publisher
+        self._commit = commit or self._noop
+
+    @staticmethod
+    async def _noop():
+        pass
 
     async def _publish(
         self, topic: str, data: dict, correlation_id: str | None = None
@@ -35,6 +41,7 @@ class BookService:
             raise ValueError("Book title must not be empty")
 
         created = await self.book_repo.create(book)
+        await self._commit()
         await self._publish(
             "book.created",
             {
@@ -69,6 +76,7 @@ class BookService:
 
         updated = await self.book_repo.update(book_id, book)
         if updated:
+            await self._commit()
             await self._publish(
                 "book.updated",
                 {
@@ -90,6 +98,7 @@ class BookService:
             return False
         deleted = await self.book_repo.delete(book_id)
         if deleted:
+            await self._commit()
             await self._publish(
                 "book.deleted",
                 {"book_id": book_id},
@@ -114,6 +123,7 @@ class BookService:
                 raise ValueError(f"Author with id {author_id} not found in cache")
 
         result = await self.book_repo.add_authors(book_id, author_ids)
+        await self._commit()
 
         for author_id in author_ids:
             await self._publish(
@@ -136,6 +146,7 @@ class BookService:
 
         result = await self.book_repo.remove_author(book_id, author_id)
         if result:
+            await self._commit()
             await self._publish(
                 "book_author.unlinked",
                 {"book_id": book_id, "author_id": author_id},
@@ -152,16 +163,20 @@ class BookService:
         await self.authors_cache.save_author(
             author_id=author_id, name=name, nationality=nationality
         )
+        await self._commit()
 
     async def remove_author_from_cache_and_books(self, author_id: int) -> None:
         """Remove an author from all books and from the cache."""
         await self.book_repo.remove_author_from_all_books(author_id)
         await self.authors_cache.delete_author(author_id)
+        await self._commit()
 
     async def sync_author_linked(self, book_id: int, author_id: int) -> None:
         """Sync an author-book link created by the authors service."""
         await self.book_repo.add_authors(book_id, [author_id])
+        await self._commit()
 
     async def sync_author_unlinked(self, book_id: int, author_id: int) -> None:
         """Sync an author-book unlink from the authors service."""
         await self.book_repo.remove_author(book_id, author_id)
+        await self._commit()

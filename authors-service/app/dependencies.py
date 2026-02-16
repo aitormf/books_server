@@ -24,4 +24,5 @@ async def get_author_service(
         author_repo=author_repo,
         books_cache=books_cache,
         event_publisher=kafka_producer,
+        commit=session.commit,
     )

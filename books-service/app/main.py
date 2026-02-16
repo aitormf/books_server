@@ -86,6 +86,7 @@ async def _book_service_for_events():
             book_repo=PostgreSQLBookRepository(session),
             authors_cache=PostgreSQLAuthorsCache(session),
             event_publisher=None,
+            commit=session.commit,
         )
 
 

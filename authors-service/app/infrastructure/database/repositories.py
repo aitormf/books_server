@@ -26,7 +26,7 @@ class PostgreSQLAuthorRepository(IAuthorRepository):
             nationality=author.nationality,
         )
         self.session.add(db_author)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_author)
         return self._to_entity(db_author)
 
@@ -48,7 +48,7 @@ class PostgreSQLAuthorRepository(IAuthorRepository):
         db_author.name = author.name
         db_author.birth_date = author.birth_date
         db_author.nationality = author.nationality
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_author)
         return self._to_entity(db_author)
 
@@ -57,7 +57,6 @@ class PostgreSQLAuthorRepository(IAuthorRepository):
         if not db_author:
             return False
         await self.session.delete(db_author)
-        await self.session.commit()
         return True
 
     async def add_books(self, author_id: int, book_ids: List[int]) -> bool:
@@ -66,7 +65,6 @@ class PostgreSQLAuthorRepository(IAuthorRepository):
                 author_id=author_id, book_id=book_id
             ).on_conflict_do_nothing()
             await self.session.execute(stmt)
-        await self.session.commit()
         return True
 
     async def remove_book(self, author_id: int, book_id: int) -> bool:
@@ -75,14 +73,12 @@ class PostgreSQLAuthorRepository(IAuthorRepository):
             AuthorBookModel.book_id == book_id,
         )
         result = await self.session.execute(stmt)
-        await self.session.commit()
         return result.rowcount > 0
 
     async def remove_book_from_all_authors(self, book_id: int) -> None:
         await self.session.execute(
             delete(AuthorBookModel).where(AuthorBookModel.book_id == book_id)
         )
-        await self.session.commit()
 
     async def get_books_by_author(self, author_id: int) -> List[Book]:
         stmt = (
@@ -135,7 +131,6 @@ class PostgreSQLBooksCache(IBooksCache):
             },
         )
         await self.session.execute(stmt)
-        await self.session.commit()
 
     async def get_book(self, book_id: int) -> Optional[Book]:
         stmt = select(BooksCacheModel).where(BooksCacheModel.book_id == book_id)
@@ -154,4 +149,3 @@ class PostgreSQLBooksCache(IBooksCache):
         await self.session.execute(
             delete(BooksCacheModel).where(BooksCacheModel.book_id == book_id)
         )
-        await self.session.commit()

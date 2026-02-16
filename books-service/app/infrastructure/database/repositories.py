@@ -26,7 +26,7 @@ class PostgreSQLBookRepository(IBookRepository):
             publication_year=book.publication_year,
         )
         self.session.add(db_book)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_book)
         return self._to_entity(db_book)
 
@@ -48,7 +48,7 @@ class PostgreSQLBookRepository(IBookRepository):
         db_book.title = book.title
         db_book.isbn = book.isbn
         db_book.publication_year = book.publication_year
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_book)
         return self._to_entity(db_book)
 
@@ -57,7 +57,6 @@ class PostgreSQLBookRepository(IBookRepository):
         if not db_book:
             return False
         await self.session.delete(db_book)
-        await self.session.commit()
         return True
 
     async def add_authors(self, book_id: int, author_ids: List[int]) -> bool:
@@ -66,7 +65,6 @@ class PostgreSQLBookRepository(IBookRepository):
                 book_id=book_id, author_id=author_id
             ).on_conflict_do_nothing()
             await self.session.execute(stmt)
-        await self.session.commit()
         return True
 
     async def remove_author(self, book_id: int, author_id: int) -> bool:
@@ -75,14 +73,12 @@ class PostgreSQLBookRepository(IBookRepository):
             BookAuthorModel.author_id == author_id,
         )
         result = await self.session.execute(stmt)
-        await self.session.commit()
         return result.rowcount > 0
 
     async def remove_author_from_all_books(self, author_id: int) -> None:
         await self.session.execute(
             delete(BookAuthorModel).where(BookAuthorModel.author_id == author_id)
         )
-        await self.session.commit()
 
     async def get_authors_by_book(self, book_id: int) -> List[Author]:
         stmt = (
@@ -132,7 +128,6 @@ class PostgreSQLAuthorsCache(IAuthorsCache):
             },
         )
         await self.session.execute(stmt)
-        await self.session.commit()
 
     async def get_author(self, author_id: int) -> Optional[Author]:
         stmt = select(AuthorsCacheModel).where(
@@ -154,4 +149,3 @@ class PostgreSQLAuthorsCache(IAuthorsCache):
                 AuthorsCacheModel.author_id == author_id
             )
         )
-        await self.session.commit()

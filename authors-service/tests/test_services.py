@@ -16,6 +16,7 @@ def service():
         author_repo=mock_repo,
         books_cache=mock_cache,
         event_publisher=mock_publisher,
+        commit=AsyncMock(),
     )
 
 
@@ -28,6 +29,7 @@ def sync_service():
         author_repo=mock_repo,
         books_cache=mock_cache,
         event_publisher=None,
+        commit=AsyncMock(),
     )
 
 
