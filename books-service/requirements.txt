@@ -1,0 +1,21 @@
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# Database
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+greenlet==3.1.1
+alembic==1.14.0
+
+# Kafka
+aiokafka==0.11.0
+
+# Validation & Configuration
+pydantic==2.10.0
+pydantic-settings==2.6.0
+python-dotenv==1.0.1
+
+# Logging
+structlog==24.4.0
+python-json-logger==3.2.0

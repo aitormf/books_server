@@ -1,0 +1,49 @@
+[project]
+name = "books-service"
+version = "1.0.0"
+description = "Books microservice for book management system"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn[standard]==0.32.0",
+    "sqlalchemy==2.0.36",
+    "asyncpg==0.30.0",
+    "alembic==1.14.0",
+    "aiokafka==0.11.0",
+    "pydantic==2.10.0",
+    "pydantic-settings==2.6.0",
+    "python-dotenv==1.0.1",
+    "structlog==24.4.0",
+    "python-json-logger==3.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.0",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "httpx==0.28.0",
+    "faker==33.0.0",
+    "ruff==0.8.0",
+    "mypy==1.13.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=app --cov-report=html --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
