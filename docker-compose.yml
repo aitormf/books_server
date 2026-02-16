@@ -82,5 +82,18 @@ services:
       postgres:
         condition: service_healthy
 
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    environment:
+      PUBLIC_AUTHORS_API: ${PUBLIC_AUTHORS_API:-http://localhost:8001}
+      PUBLIC_BOOKS_API: ${PUBLIC_BOOKS_API:-http://localhost:8002}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - authors-service
+      - books-service
+
 volumes:
   postgres-data:
