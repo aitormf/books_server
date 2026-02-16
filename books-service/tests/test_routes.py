@@ -16,7 +16,7 @@ async def test_create_book(client, book_service, sample_book_data):
         updated_at=datetime(2025, 1, 1),
     )
 
-    response = await client.post("/books/", json=sample_book_data)
+    response = await client.post("/books", json=sample_book_data)
 
     assert response.status_code == 201
     data = response.json()
@@ -28,7 +28,7 @@ async def test_create_book(client, book_service, sample_book_data):
 async def test_create_book_validation_error(client, book_service):
     book_service.create_book.side_effect = ValueError("Book title must not be empty")
 
-    response = await client.post("/books/", json={
+    response = await client.post("/books", json={
         "title": "",
         "publication_year": 2020,
     })
@@ -44,7 +44,7 @@ async def test_list_books(client, book_service):
         Book(id=2, title="Book 2", publication_year=2021),
     ]
 
-    response = await client.get("/books/")
+    response = await client.get("/books")
 
     assert response.status_code == 200
     data = response.json()

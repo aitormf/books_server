@@ -26,7 +26,7 @@ async def test_create_author(client, author_service, sample_author_data):
         updated_at=datetime(2025, 1, 1),
     )
 
-    response = await client.post("/authors/", json=sample_author_data)
+    response = await client.post("/authors", json=sample_author_data)
 
     assert response.status_code == 201
     data = response.json()
@@ -38,7 +38,7 @@ async def test_create_author(client, author_service, sample_author_data):
 async def test_create_author_validation_error(client, author_service):
     author_service.create_author.side_effect = ValueError("Author name must be at least 2 chars")
 
-    response = await client.post("/authors/", json={
+    response = await client.post("/authors", json={
         "name": "A",
         "birth_date": "1990-01-01",
         "nationality": "ES",
@@ -54,7 +54,7 @@ async def test_list_authors(client, author_service):
         Author(id=2, name="Author 2", birth_date=date(1985, 5, 10), nationality="FR"),
     ]
 
-    response = await client.get("/authors/")
+    response = await client.get("/authors")
 
     assert response.status_code == 200
     data = response.json()
@@ -184,7 +184,7 @@ async def test_health_check(client):
 
 @pytest.mark.asyncio
 async def test_create_author_future_birth_date(client, author_service):
-    response = await client.post("/authors/", json={
+    response = await client.post("/authors", json={
         "name": "Future Author",
         "birth_date": "2099-01-01",
         "nationality": "ES",
