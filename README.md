@@ -4,6 +4,7 @@ A microservices-based system for managing books and authors, built with Python, 
 
 ## Architecture
 
+- **Frontend** (port 5173) — SvelteKit web UI for managing authors and books
 - **Authors Service** (port 8001) — CRUD operations for authors
 - **Books Service** (port 8002) — CRUD operations for books
 - **Kafka (KRaft)** — Asynchronous event-driven communication between services
@@ -13,14 +14,23 @@ Each service follows a **layered architecture** with the **Repository Pattern** 
 
 ## Tech Stack
 
+**Backend:**
 - Python 3.13
 - FastAPI + Uvicorn
 - SQLAlchemy (async) + asyncpg
 - Apache Kafka (KRaft mode, no Zookeeper)
 - PostgreSQL 16
-- Docker Compose
 - uv (package manager)
 - structlog (structured JSON logging)
+
+**Frontend:**
+- SvelteKit (Svelte 5 with runes)
+- Tailwind CSS v4
+- TypeScript
+- pnpm (package manager)
+
+**Infrastructure:**
+- Docker Compose
 
 ## Quick Start
 
@@ -29,14 +39,17 @@ Each service follows a **layered architecture** with the **Repository Pattern** 
 git clone <repo-url>
 cd book-management-system
 
-# 2. Start all services
-docker-compose up -d
+# 2. Start all services (backends + frontend)
+docker compose up -d
 
 # 3. Verify everything is running
-docker-compose ps
+docker compose ps
 
-# 4. Check logs
-docker-compose logs -f authors-service books-service
+# 4. Open the UI
+open http://localhost:5173
+
+# 5. Check logs
+docker compose logs -f authors-service books-service
 ```
 
 ## API Usage Examples
@@ -109,6 +122,26 @@ curl http://localhost:8002/books/1
 | DELETE | `/books/{id}/authors/{author_id}` | Unassign author |
 | GET | `/health` | Health check |
 
+## Frontend
+
+The SvelteKit frontend provides a web UI for managing authors and books at http://localhost:5173.
+
+**Features:**
+- List, create, edit and delete authors and books
+- Inline forms for create/edit operations
+- Confirmation dialogs for deletions
+- Active route highlighting in navigation
+
+**Local development (outside Docker):**
+
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+The frontend uses `$env/dynamic/public` for API URLs, configured via environment variables (`PUBLIC_AUTHORS_API`, `PUBLIC_BOOKS_API`). In Docker these come from the root `.env` via compose; for local dev they come from `frontend/.env`.
+
 ## API Documentation
 
 Once running, interactive docs are available at:
@@ -174,16 +207,19 @@ See [.env.example](.env.example) for all configurable values.
 
 ```bash
 # Rebuild without cache
-docker-compose build --no-cache
+docker compose build --no-cache
+
+# Rebuild a single service
+docker compose up -d --build frontend
 
 # Access PostgreSQL
-docker-compose exec postgres psql -U library_user -d authors_db
+docker compose exec postgres psql -U library_user -d authors_db
 
 # List Kafka topics
-docker-compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 # Consume messages for debugging
-docker-compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
+docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
   --topic author.created \
   --from-beginning
@@ -193,15 +229,17 @@ docker-compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
 
 **Services fail to start**: Ensure Kafka and PostgreSQL are healthy first:
 ```bash
-docker-compose ps  # Check health status
-docker-compose logs kafka  # Check Kafka logs
+docker compose ps  # Check health status
+docker compose logs kafka  # Check Kafka logs
 ```
 
 **Kafka connection errors**: Kafka may take 30-45 seconds to start. Services will retry automatically.
 
 **Database connection errors**: Verify PostgreSQL is running and the init script created both databases:
 ```bash
-docker-compose exec postgres psql -U library_user -c "\l"
+docker compose exec postgres psql -U library_user -c "\l"
 ```
 
 **Books not appearing on author**: Kafka events are eventually consistent. Wait a moment for the consumer to sync.
+
+**CORS errors in the frontend**: The backend services must be rebuilt after code changes. Run `docker compose up -d --build authors-service books-service`.
